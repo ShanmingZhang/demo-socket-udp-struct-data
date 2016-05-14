@@ -1,0 +1,37 @@
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+#define BUFFER_SIZE 256
+
+int
+main() {
+  /* ポート番号、ソケット */
+  unsigned short port = 9876;
+  int recvSocket;
+
+  /* sockaddr_in 構造体 */
+  struct sockaddr recvSockAddr;
+
+  /* 各種パラメータ */
+  int status;
+  int numrcv;
+  char buffer[BUFFER_SIZE];
+  unsigned long on = 1;
+
+  /* ソケット生成 */
+  recvSocket = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+ 
+  /* バインド */
+  status = bind(recvSocket, (struct sockaddr_in *) &recvSockAddr, sizeof(recvSockAddr));
+
+  /* パケット受信 */
+  while(1) {
+    numrcv = recvfrom(recvSocket, buffer, BUFFER_SIZE, 0, NULL, NULL);
+    if(numrcv == -1) { status = close(recvSocket); break; }
+    printf("received: %s\n", buffer);
+  }
+}

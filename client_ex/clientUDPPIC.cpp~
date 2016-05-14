@@ -1,0 +1,89 @@
+#include <features.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <unistd.h>
+#include <asm/types.h>
+#include <sys/types.h>
+#include <linux/if_packet.h>
+#include <linux/if_ether.h> 
+#include <linux/if_arcnet.h> 
+#include <linux/version.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#define BUFFERSIZE 508
+
+int main() {
+
+	unsigned char buf[BUFFERSIZE];
+	FILE *file_fd=fopen("pic0.jpg","r+");
+
+	FILE *file_wd= NULL;
+      file_wd = fopen("3new.jpg","a+");
+  	if( file_fd == NULL ) {
+    		printf( "ファイルオープンエラー\n" );
+    		return -1;
+  	}
+	if( file_wd == NULL ) {
+    		printf( "ファイルオープンエラー\n" );
+    		return -1;
+ 	}
+	fd_set rfds, wfds;
+
+  /* IPアドレス、ポート番号、ソケット */
+  char destination[80];
+  unsigned short port = 9876;
+  int destSocket;
+
+  /* sockaddr_in 構造体 */
+  struct sockaddr_in destSockAddr;
+
+  /* 各種パラメータ */
+  int i;
+  char *toSendText = "This is a test";
+
+  /************************************************************/
+  /* 相手先アドレスの入力 */
+  printf("Connect to ? : (name or IP address) ");
+  scanf("%s", destination);
+
+  /* sockaddr_in 構造体のセット */
+  memset(&destSockAddr, 0, sizeof(destSockAddr));
+  destSockAddr.sin_addr.s_addr = inet_addr(destination);
+  destSockAddr.sin_port = htons(port);
+  destSockAddr.sin_family = AF_INET;
+
+  /* ソケット生成 */
+  destSocket = socket(AF_INET, SOCK_DGRAM, 0);
+ 
+int index = 0;
+	for(;;){
+		int readBytes = fread(buf,1,sizeof(buf),file_fd);
+
+		if(readBytes==0)
+		{
+    				printf("one picture transmit over!\n");
+    				break;
+		}
+		else
+		{	
+			index++;
+			sendto(destSocket, buf, readBytes, 0, (struct sockaddr *)&destSockAddr, sizeof(destSockAddr));
+						
+			int writeBytes=fwrite(buf,readBytes,1,file_wd);				
+			printf(" %d read from file to buf ##%d## bytes\n",index,readBytes);
+		}
+		bzero(buf,sizeof(buf));
+	}
+	fclose(file_fd);
+	fclose(file_wd);
+  /* ソケットの終了 */
+  close(destSocket);
+}
