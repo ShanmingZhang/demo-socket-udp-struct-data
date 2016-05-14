@@ -98,21 +98,11 @@ int main(void) {
 	req_msg.src_addr.sin_addr.s_addr = myaddr.sin_addr.s_addr;
 
 	printf("From %s:%d ", inet_ntoa(myaddr.sin_addr), ntohs(myaddr.sin_port));
-
 	printf("sending request %s to %s port %d\n", req_msg.r_msg, server, SERVICE_PORT);
 	/* now let's send the messages */
-	char* buf_msg = (char*)malloc(sizeof(struct REQ_MSG)+1);
-	//printf("From %d ", (int)strlen(buf_msg));
-	//printf("From %d ", sizeof(req_msg));
-	//printf("From %d ", sizeof(struct REQ_MSG));
 
-	memcpy(buf_msg,&req_msg,sizeof(req_msg));
-
-	//printf("From %d ", (int)strlen(buf_msg));
-	//printf("From %d ", (int)strlen(&req_msg));
-	sendto(fd, buf_msg, sizeof(struct REQ_MSG), 0, (struct sockaddr *) &remaddr,
+	sendto(fd, (char *)&req_msg, sizeof(struct REQ_MSG), 0, (struct sockaddr *) &remaddr,
 			sizeof(remaddr));
-	free(buf_msg);
 
 	FILE *file_fd = fopen(msg_buf, "w");
 	bzero(msg_buf, sizeof(msg_buf));
@@ -121,16 +111,7 @@ int main(void) {
 	for (;;) {
 
 		struct RES_PACKET res_packet;
-		char* buf_packet = (char*) malloc(sizeof(struct RES_PACKET) + 1);
-		memset(buf_packet, 0x00, sizeof(struct RES_PACKET) + 1);
-		recvlen = recvfrom(fd, buf_packet, sizeof(struct REQ_MSG), 0, NULL, NULL);
-		memcpy(&res_packet, buf_packet, sizeof(res_packet));
-
-		printf("%d \n", (char)res_packet.app_type);
-		printf("%d \n", res_packet.app_id);
-		printf("%lld \n", res_packet.req_id);
-		printf("%d \n", res_packet.data_len);
-		printf("%s \n", res_packet.data);
+		recvlen = recvfrom(fd, (char *)&res_packet, sizeof(struct RES_PACKET), 0, NULL, NULL);
 
 		if (recvlen > 0) {
 			printf("recvlen %d  %d \n", recvlen, ++index);
@@ -142,7 +123,6 @@ int main(void) {
 			exit(1);
 		}
 		fwrite(res_packet.data, DATA_LEN, 1, file_fd);
-		free(buf_packet);
 	}
 
 	if (fclose(file_fd) != 0) {
