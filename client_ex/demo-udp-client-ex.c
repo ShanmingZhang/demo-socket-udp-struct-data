@@ -21,9 +21,9 @@
 
 #include <linux/types.h>
 
-#define SERVICE_PORT	20123	/* hard-coded server port number */
+#define SERVICE_PORT	21234	/* hard-coded port number */
 #define MSGLEN 100
-#define	DATA_LEN	497			/* The length of RES_PACKET is 512 = 497 + 1 + 2 + 4 + 8, then the length of UDP packet is 512 */
+#define	DATA_LEN	497  /* The length of RES_PACKET is 512 = 497 + 1 + 2 + 4 + 8, then the length of UDP packet is 512*/
 
 #pragma pack(1)
 struct REQ_MSG {
@@ -32,18 +32,21 @@ struct REQ_MSG {
 };
 
 struct RES_PACKET {
-	__be64 req_id;				/* 8 byte. req_id is number of request allocated by application/service server while response the request. */
-	unsigned int data_len;		/* 4 byte. the length of data chunk. */
-	__be16 app_id;				/* 2 byte. the identifier of application/service of service provider. */
-	__u8 app_type;				/* 1 byte. 'e': energy efficient application/service. */
+	__be64 req_id; // 8 byte. req_id is number of request allocated by application/service server while response the request.
+	unsigned int data_len;   // 4 byte. the length of data chunk.
+	__be16 app_id; // 2 byte. the identifier of application/service of service provider
+	__u8 app_type;  // 1 byte. 'e': energy efficient application/service.
 	char data[DATA_LEN];
 };
 #pragma pack()
 
 int main(void) {
 
+	char server[] = "0.0.0.0";
+	printf("Connect to ? : (name or IP address) ");
+	scanf("%s", server);
+
 	int fd;
-	/* create a socket */
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 		printf("socket created\n");
 
@@ -58,10 +61,6 @@ int main(void) {
 		return 0;
 	}
 
-	char server[] = {};
-	printf("Connect to ? : (name or IP address) ");
-	scanf("%s", server);
-
 	struct sockaddr_in remaddr;
 	memset((char *) &remaddr, 0, sizeof(remaddr));
 	remaddr.sin_family = AF_INET;
@@ -71,7 +70,6 @@ int main(void) {
 		exit(1);
 	}
 
-	/* request message buffer */
 	char msg_buf[MSGLEN];
 	printf("Please input request content name: ");
 	scanf("%s", msg_buf);
@@ -83,7 +81,6 @@ int main(void) {
 	printf("From %s:%d ", inet_ntoa(myaddr.sin_addr), ntohs(myaddr.sin_port));
 	printf("sending request %s to %s port %d\n", req_msg.r_msg, server, SERVICE_PORT);
 
-	/* now let's send the messages */
 	sendto(fd, (char *)&req_msg, sizeof(struct REQ_MSG), 0, (struct sockaddr *) &remaddr,
 			sizeof(remaddr));
 
@@ -91,9 +88,10 @@ int main(void) {
 	bzero(msg_buf, sizeof(msg_buf));
 
 	int index = 0;
-	int recvlen; /* # bytes in acknowledgement message */
+	int recvlen;
 
 	for (;;) {
+
 		struct RES_PACKET res_packet;
 		recvlen = recvfrom(fd, (char *)&res_packet, sizeof(struct RES_PACKET), 0, NULL, NULL);
 
