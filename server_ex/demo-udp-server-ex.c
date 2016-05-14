@@ -30,7 +30,6 @@ struct REQ_MSG {
 	struct sockaddr_in s_addr;
 	char r_msg[100];
 };
-
 struct RES_PACKET {
 	__be64 req_id; // 8 byte. req_id is number of request allocated by application/service server while response the request.
 	unsigned int data_len;   // 4 byte. the length of data chunk.

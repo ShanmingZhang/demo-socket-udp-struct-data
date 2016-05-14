@@ -18,7 +18,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
 #include <linux/types.h>
 
 #define SERVICE_PORT	21234	/* hard-coded port number */
@@ -30,7 +29,6 @@ struct REQ_MSG {
 	struct sockaddr_in src_addr;
 	char r_msg[100];
 };
-
 struct RES_PACKET {
 	__be64 req_id; // 8 byte. req_id is number of request allocated by application/service server while response the request.
 	unsigned int data_len;   // 4 byte. the length of data chunk.
