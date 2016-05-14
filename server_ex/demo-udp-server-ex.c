@@ -29,7 +29,10 @@
 #define MSGLEN 100
 
 #define	DATA_LEN	497  /* The length of RES_PACKET is 512 = 497 + 1 + 2 + 4 + 8, then the length of UDP packet is 512*/
+#define APP_TYPE_E	'e'
+#define APP_ID	101
 
+#define CONT_COUNT	2
 #pragma pack(1)
 
 struct REQ_MSG {
@@ -40,23 +43,27 @@ struct REQ_MSG {
 struct RES_PACKET {
 	__be64 req_id; // 8 byte. req_id is number of request allocated by application/service server while response the request.
 	unsigned int data_len;   // 4 byte. the length of data chunk.
-	__be16 app_id;    // 2 byte. the identifier of application/service of service provider
+	__be16 app_id; // 2 byte. the identifier of application/service of service provider
 	__u8 app_type;  // 1 byte. 'e': energy efficient application/service.
 	char data[DATA_LEN];
 };
 
 #pragma pack()
 
-void response(int request_id, char * content_name, int sock_id,
-		struct sockaddr_in remaddr);
+void response(__be64 req_id, char * content_name, __u8 app_type, __be16 app_id,
+		unsigned int data_len, int sock_id, struct sockaddr_in remaddr);
+int check_request(const char* content_name[],  unsigned int c_count, char req_content[] );
 
 int main(int argc, char **argv) {
+
+	char * content_list[] = { "pic0.jpg", "pic1.jpg" };
+
 	struct sockaddr_in myaddr; /* our address */
 	struct sockaddr_in remaddr; /* remote address */
 	socklen_t addrlen = sizeof(remaddr); /* length of addresses */
 	int recvlen; /* # bytes received */
 	int fd; /* our socket */
-	int msgcnt = 0; /* count # of messages we received */
+	__be64 msgcnt = 0; /* count # of messages we received */
 
 	/* create a UDP socket */
 
@@ -82,63 +89,73 @@ int main(int argc, char **argv) {
 	for (;;) {
 		printf("waiting on port %d\n", SERVICE_PORT);
 		struct REQ_MSG req_msg;
-		char* buf_msg = (char*)malloc(sizeof(struct REQ_MSG)+1);
-		memset(buf_msg, 0x00, sizeof(struct REQ_MSG)+1);
-		recvlen = recvfrom(fd, buf_msg, sizeof(struct REQ_MSG), 0,
+		recvlen = recvfrom(fd, (char *)&req_msg, sizeof(struct REQ_MSG), 0,
 				(struct sockaddr *) &remaddr, &addrlen);
-		memcpy(&req_msg, buf_msg, sizeof(req_msg));
 
 		printf("%s \n", req_msg.r_msg);
 		printf("%s \n", inet_ntoa(req_msg.s_addr.sin_addr));
-		break;
-//
-//		if (recvlen > 0) {
-//			req_content_name[recvlen] = 0;
-//			printf("received message: \"%s\" (%d bytes)\n", req_content_name, recvlen);
-//
-//			if (strcmp(req_content_name, "pic0.jpg") == 0) {
-//				response(++msgcnt, req_content_name, fd, remaddr);
-//			} else {
-//				printf(" The requested content dosen't exist in server.");
-//			}
-//
-//		} else {
-//			printf("uh oh - something went wrong!\n");
-//		}
+
+		if (recvlen > 0) {
+
+			if (check_request(content_list, CONT_COUNT, req_msg.r_msg ) > 0) {
+				response(++msgcnt, req_msg.r_msg, APP_TYPE_E, APP_ID, DATA_LEN,
+						fd, remaddr);
+			} else {
+				printf(" The requested content dosen't exist in server.");
+			}
+		} else {
+			printf("uh oh - something went wrong!\n");
+		}
 	}
-	/* never exits */
 	return 0;
 }
-//
-//void response(int request_id, char * content_name, int sock_id,
-//		struct sockaddr_in remaddr) {
-//	char buf[BUFSIZE];
-//	printf("response the %d request \n", request_id);
-//
-//	FILE *file_fd = fopen(content_name, "r+");
-//	if (file_fd == NULL) {
-//		printf("ファイルオープンエラー\n");
-//		exit(1);
-//	}
-//	int index = 0;
-//	for (;;) {
-//		int readBytes = fread(buf, 1, sizeof(buf)-1, file_fd);
-//		if (readBytes == 0) {
-//			printf(" file is read over ! \n");
-//			//printf("sendLen %d %d \n", readBytes, ++index);
-//			sendto(sock_id, buf, readBytes, 0, (struct sockaddr *) &remaddr,
-//					sizeof(remaddr));
-//			break;
-//		} else {
-//			//printf("sendLen %d %d ", readBytes, ++index);
-//			buf[readBytes] = index;
-//			//printf("last char %d \n", buf[readBytes]);
-//			sendto(sock_id, buf, readBytes + 1, 0, (struct sockaddr *) &remaddr,
-//					sizeof(remaddr));
-//			// get client IP address
-//			//printf(" the client IP : %s \n ", inet_ntoa(remaddr.sin_addr));
-//			//printf(" the client port: %d \n ", ntohs(remaddr.sin_port));
-//		}
-//		bzero(buf, sizeof(buf));
-//	}
-//}
+
+void response(__be64 req_id, char * content_name, __u8 app_type, __be16 app_id,
+		unsigned int data_len, int sock_id, struct sockaddr_in remaddr) {
+
+	printf("response the %lld request \n", req_id);
+
+	FILE *file_fd = fopen(content_name, "r+");
+	if (file_fd == NULL) {
+		printf("ファイルオープンエラー\n");
+		exit(1);
+	}
+
+	struct RES_PACKET res_packet;
+	res_packet.app_type = app_type;
+	res_packet.app_id = app_id;
+	res_packet.req_id = req_id;
+
+	int index = 0;
+	for (;;) {
+		int readBytes = fread(res_packet.data, 1, DATA_LEN, file_fd);
+		if (readBytes == 0) {
+			printf(" file is read over ! \n");
+			printf(" data size: %d sent in %d time. \n", readBytes, ++index);
+
+			res_packet.data_len = readBytes;
+			sendto(sock_id, (char *)&res_packet, sizeof(struct RES_PACKET), 0,
+					(struct sockaddr *) &remaddr, sizeof(remaddr));
+			break;
+		} else {
+			printf(" data size: %d sent in %d time. \n", readBytes, ++index);
+
+			res_packet.data_len = readBytes;
+			sendto(sock_id, (char *)&res_packet, sizeof(struct RES_PACKET), 0,
+					(struct sockaddr *) &remaddr, sizeof(remaddr));
+		}
+	}
+}
+
+int check_request(const char * content_list[], unsigned int c_count, char req_content[]) {
+	int flag = 0;
+	int index = 0;
+	while ( index < c_count) {
+		if (strcmp(content_list[index], req_content) == 0) {
+			flag = 1;
+			break;
+		}
+		index++;
+	}
+	return flag;
+}
