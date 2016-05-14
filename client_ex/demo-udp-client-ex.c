@@ -48,6 +48,8 @@ int main(void) {
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 		printf("socket created\n");
 
+	int recv_buf = 1024 * 1024;
+	setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const char*) &recv_buf, sizeof(int));
 	struct sockaddr_in myaddr;
 	memset((char *) &myaddr, 0, sizeof(myaddr));
 	myaddr.sin_family = AF_INET;
@@ -88,9 +90,9 @@ int main(void) {
 	int index = 0;
 	int recvlen;
 
+	struct RES_PACKET res_packet;
 	for (;;) {
 
-		struct RES_PACKET res_packet;
 		recvlen = recvfrom(fd, (char *)&res_packet, sizeof(struct RES_PACKET), 0, NULL, NULL);
 
 		if (recvlen > 0) {
@@ -102,7 +104,7 @@ int main(void) {
 			printf("recv error!\n");
 			exit(1);
 		}
-		fwrite(res_packet.data, DATA_LEN, 1, file_fd);
+		fwrite(&res_packet.data, DATA_LEN, 1, file_fd);
 	}
 
 	if (fclose(file_fd) != 0) {
