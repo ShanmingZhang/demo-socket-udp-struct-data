@@ -1,1 +1,2 @@
 # demo-socket-udp-struct-data
+The demo realzes a data transmission service between server and client, and based on TCP/IP socket comunication mechanism. You can define the data chunck format of application layer and configure the value of fields accourding to the defined format before sending the data chunck. The configured informaton can be used to communicate with underlayer and realize a cross-layer service or control mechanism, such as, ip layer, network layer.
