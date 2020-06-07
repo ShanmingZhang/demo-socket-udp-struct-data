@@ -1,14 +1,3 @@
-/*
- ============================================================================
- Name        : demo-udp-server-ex.c
- Author      : Shanming ZHANG
- Version     : version 1.0
- Copyright   : Your copyright notice
- Description : UDP Server for the transmission of self-defined data format
- Environment : Linux
- Date        : 2016.05.14 22:33 JST
- ============================================================================
- */
 
 #include <stdlib.h>
 #include <stdio.h>
